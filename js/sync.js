@@ -12,7 +12,14 @@
 //     has moved on AND this device has unsent changes, both devices changed
 //     things: instead of silently overwriting one, the app asks which to keep.
 //
-// Sign-in uses a 6-digit code sent by email (no password).
+// Sign-in is by email (no password). Supabase's free email service sends a
+// sign-in LINK (its templates can't be changed to send a code), so there are
+// three ways in:
+//   1. Click the link: it opens the app with the sign-in in the address
+//      (#access_token=...), which completeSignInFromLink() picks up.
+//   2. Copy the link and paste it into the app (needed for the iPhone
+//      home-screen app, which doesn't share data with Safari).
+//   3. Type a 6-digit code, if the email has one.
 //
 // The URL and key below are public by design: they only allow what the
 // database's security rules allow (each signed-in person, their own row).
@@ -98,17 +105,76 @@ const sync = (() => {
 
   // ---------- Signing in and out ----------
 
-  async function sendCode(email) {
-    await request("/auth/v1/otp", { method: "POST", auth: false, body: { email: email.trim(), create_user: true } });
+  // Where the email's link should bring you back to: this page's address.
+  // (Supabase only allows addresses listed in its URL Configuration; for any
+  // other it uses the Site URL.)
+  function appAddress() {
+    return location.origin + location.pathname;
   }
 
-  async function verifyCode(email, code) {
-    const auth = await request("/auth/v1/verify", { method: "POST", auth: false,
-      body: { type: "email", email: email.trim(), token: code.trim() } });
-    // Data already on this device that was never synced counts as "unsent changes",
-    // so it's never thrown away without asking.
-    setState({ session: sessionFrom(auth), version: null, dirty: store.hasData() });
+  async function sendCode(email) {
+    await request(`/auth/v1/otp?redirect_to=${encodeURIComponent(appAddress())}`,
+      { method: "POST", auth: false, body: { email: email.trim(), create_user: true } });
+  }
+
+  // Data already on this device that was never synced counts as "unsent
+  // changes", so it's never thrown away without asking.
+  async function startSession(session) {
+    setState({ session, version: null, dirty: store.hasData() });
     await syncNow();
+  }
+
+  // `input` is either the 6-digit code or the whole sign-in link from the email.
+  async function verifyCode(email, input) {
+    const text = input.trim();
+    if (!/^https?:\/\//i.test(text)) {
+      const auth = await request("/auth/v1/verify", { method: "POST", auth: false,
+        body: { type: "email", email: email.trim(), token: text } });
+      return startSession(sessionFrom(auth));
+    }
+
+    // A pasted link looks like .../auth/v1/verify?token=abc123&type=magiclink&redirect_to=...
+    // Its `token` can be exchanged for a sign-in directly, without opening the link.
+    let link;
+    try {
+      link = new URL(text);
+    } catch {
+      throw new SyncError("error", "That doesn't look like the sign-in link from the email.");
+    }
+    const tokenHash = link.searchParams.get("token");
+    if (!tokenHash) throw new SyncError("error", "That doesn't look like the sign-in link from the email.");
+    const auth = await request("/auth/v1/verify", { method: "POST", auth: false,
+      body: { type: link.searchParams.get("type") || "email", token_hash: tokenHash } });
+    return startSession(sessionFrom(auth));
+  }
+
+  // After clicking the email's link, the app opens with the sign-in in the address:
+  //   #access_token=...&refresh_token=...&expires_in=3600&type=magiclink
+  // or, if the link was used or expired: #error=...&error_description=...
+  // Returns null (nothing to do), { signedIn: true } or { error: "message" }.
+  function completeSignInFromLink() {
+    const params = new URLSearchParams(location.hash.replace(/^#\/?/, ""));
+    if (params.get("error_description")) {
+      return { error: `The sign-in link didn't work (${params.get("error_description").replace(/\+/g, " ")}). Send a new one.` };
+    }
+    const accessToken = params.get("access_token");
+    if (!accessToken) return null;
+    // The access token contains the account's email: it's three dot-separated
+    // parts, and the middle one is base64 text holding JSON.
+    let email = null;
+    try {
+      const payload = accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      email = JSON.parse(atob(payload)).email ?? null;
+    } catch {
+      // Not important: the email is only shown on screen.
+    }
+    startSession({
+      accessToken,
+      refreshToken: params.get("refresh_token"),
+      expiresAt: Date.now() + Number(params.get("expires_in") || 3600) * 1000,
+      email,
+    });
+    return { signedIn: true };
   }
 
   async function signOut() {
@@ -252,7 +318,7 @@ const sync = (() => {
   window.addEventListener("online", () => syncNow());
 
   return {
-    sendCode, verifyCode, signOut, syncNow, resolveConflict, conflictSummary,
+    sendCode, verifyCode, completeSignInFromLink, signOut, syncNow, resolveConflict, conflictSummary,
     isSignedIn: () => Boolean(getState().session),
     email: () => getState().session?.email ?? null,
     lastSyncedAt: () => getState().lastSyncedAt ?? null,

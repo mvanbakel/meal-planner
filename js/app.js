@@ -1224,7 +1224,7 @@ function renderSyncPanel() {
       panel.replaceChildren(...present([
         el("h2", {}, "Sync between devices"),
         el("p", {}, "Sign in with your email on each device to keep your recipes, plans and goals the same everywhere. "
-          + "We'll email you a 6-digit code; there's no password."),
+          + "We'll email you a sign-in link; there's no password."),
         el("form", { className: "sync-form", onSubmit: async (event) => {
           event.preventDefault();
           email = input.value;
@@ -1232,13 +1232,13 @@ function renderSyncPanel() {
           try {
             await sync.sendCode(email);
             step = "code";
-            draw("", `Code sent to ${email}. It can take a minute; check your junk folder too.`);
+            draw("", `Email sent to ${email}. It can take a minute; check your junk folder too.`);
           } catch (e) {
             draw(e.message);
           }
         } },
           el("label", { htmlFor: "sync-email" }, "Email"), input,
-          el("button", { type: "submit", className: "button primary" }, "Email me a code")),
+          el("button", { type: "submit", className: "button primary" }, "Email me a sign-in link")),
         note, error,
         el("p", { className: "meta" },
           "Data already on this device is kept. If your other device has different data, you'll be asked which to keep."),
@@ -1246,8 +1246,8 @@ function renderSyncPanel() {
       return;
     }
 
-    const codeInput = el("input", { id: "sync-code", inputMode: "numeric", autocomplete: "one-time-code",
-      placeholder: "123456", required: true });
+    const codeInput = el("input", { id: "sync-code", autocomplete: "one-time-code",
+      placeholder: "https://… or 123456", required: true });
     panel.replaceChildren(...present([
       el("h2", {}, "Sync between devices"),
       el("form", { className: "sync-form", onSubmit: async (event) => {
@@ -1258,19 +1258,27 @@ function renderSyncPanel() {
           draw();
         } catch (e) {
           draw(e.message.includes("expired") || e.message.includes("invalid")
-            ? "That code didn't work. Check it, or send a new one." : e.message);
+            ? "That link or code didn't work. Links work once and expire after an hour; send a new one." : e.message);
         }
       } },
-        el("label", { htmlFor: "sync-code" }, `Code from the email sent to ${email}`), codeInput,
+        el("ul", { className: "steps" },
+          el("li", {}, "On this device's browser: just click the link in the email."),
+          el("li", {}, "In the iPhone home-screen app: in Mail, press and hold the link, choose ",
+            el("strong", {}, "Copy Link"), ", then paste it here.")),
+        el("label", { htmlFor: "sync-code" }, "Sign-in link (or code) from the email"), codeInput,
         el("button", { type: "submit", className: "button primary" }, "Sign in")),
       note, error,
       el("button", { type: "button", className: "link", onClick: () => { step = "email"; draw(); } },
-        "Use a different email or send a new code"),
+        "Use a different email or send a new link"),
     ]));
   }
 
   sync.onStatus(() => { if (panel.isConnected && sync.isSignedIn()) draw(); });
-  draw();
+  // A message left by the sign-in link (see the start-up code at the bottom).
+  const linkMessage = sessionStorage.getItem("meal-planner.signInMessage");
+  sessionStorage.removeItem("meal-planner.signInMessage");
+  if (linkMessage && !sync.isSignedIn()) draw(linkMessage);
+  else draw();
   return panel;
 }
 
@@ -1599,6 +1607,14 @@ function route() {
     else link.removeAttribute("aria-current");
   });
   window.scrollTo(0, 0);
+}
+
+// Coming back from the sign-in link in the email? Finish signing in, then
+// show the Backup & data page (instead of treating the link's details as a page).
+const linkSignIn = sync.completeSignInFromLink();
+if (linkSignIn) {
+  sessionStorage.setItem("meal-planner.signInMessage", linkSignIn.error ?? "✓ Signed in. Syncing…");
+  history.replaceState(null, "", "#/data");
 }
 
 window.addEventListener("hashchange", route);
