@@ -7,9 +7,13 @@ Mozilla's pdf.js 3.11.174 in `vendor/pdfjs/` (Apache 2.0 licence), used only to 
 
 ## Running it
 
-Open `index.html` in Chrome (double-click it, or `open index.html` in Terminal).
+Live: https://mvanbakel.github.io/meal-planner/ (GitHub Pages, rebuilt on every push to `main`).
+Locally: open `index.html` in Chrome.
+
 Data is saved in that browser only (`localStorage`). Clearing the browser's site
 data erases it, and a different browser/device/address starts empty.
+**Backup & data** (footer link, `#/data`) downloads everything as a JSON file and can
+load it on another device, replacing that device's data (`store.exportData()`, `store.readBackup()`).
 
 ## Structure
 

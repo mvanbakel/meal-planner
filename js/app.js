@@ -11,6 +11,7 @@
 //   #/grocery, #/grocery/2026-09-28   the grocery list for this week / that week
 //   #/shop, #/shop/2026-09-28  in-store checklist for this week / that week
 //   #/goals, #/goals/2026-09-28  daily nutrition goals + that week's review
+//   #/data                     download / load a backup
 //   #/flyers, #/flyers/<id>    flyer import (hidden for now)
 // Using the address means the browser's Back button and bookmarks just work.
 const view = document.getElementById("view");
@@ -1133,6 +1134,81 @@ function renderShoppingList(weekStart) {
   ];
 }
 
+// ---------- Backup & data ----------
+
+// "5 recipes · 3 planned weeks · 2 goals" from collection sizes.
+function dataSummary(counts) {
+  return [
+    plural(counts.recipes ?? 0, "recipe"),
+    plural(counts.mealPlans ?? 0, "planned week"),
+    plural(counts.nutritionGoals ?? 0, "goal"),
+  ].join(" · ");
+}
+
+function renderBackup() {
+  const countNow = () => ({
+    recipes: store.list("recipes").length,
+    mealPlans: store.list("mealPlans").length,
+    nutritionGoals: store.list("nutritionGoals").length,
+  });
+  const loadArea = el("div", { "aria-live": "polite" });
+
+  const fileInput = el("input", { type: "file", id: "backup-file", accept: ".json,application/json",
+    onChange: async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const backup = store.readBackup(await file.text());
+      if (backup.error) {
+        loadArea.replaceChildren(el("p", { className: "error-text" }, backup.error));
+        fileInput.value = "";
+        return;
+      }
+      const made = backup.exportedAt
+        ? new Date(backup.exportedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : "an unknown date";
+      loadArea.replaceChildren(
+        el("p", {}, el("strong", {}, `Backup from ${made}: `), dataSummary(backup.counts)),
+        el("p", { className: "warn-text" }, `This replaces everything on this device (${dataSummary(countNow())}).`),
+        el("div", { className: "actions" },
+          el("button", { type: "button", className: "button danger", onClick: () => {
+            if (!confirm("Replace all data on this device with this backup?")) return;
+            store.replaceAll(backup.data);
+            loadArea.replaceChildren(el("p", {}, "✓ Backup loaded. ", el("a", { href: "#/" }, "Go to your recipes")));
+            currentCounts.textContent = `This device has: ${dataSummary(countNow())}`;
+            fileInput.value = "";
+          } }, "Replace this device's data"),
+          el("button", { type: "button", className: "button", onClick: () => {
+            loadArea.replaceChildren(); fileInput.value = "";
+          } }, "Cancel")));
+    } });
+
+  const currentCounts = el("p", { className: "meta" }, `This device has: ${dataSummary(countNow())}`);
+
+  return [
+    el("h1", {}, "Backup & data"),
+    el("p", { className: "muted" },
+      "Your data is saved in this browser on this device only. A backup file lets you keep a copy, "
+      + "or move everything to another device or browser."),
+    el("section", { className: "card import-box" },
+      el("h2", {}, "Download a backup"),
+      el("p", {}, "Saves all your recipes, meal plans, grocery edits, nutrition links and goals to one file. "
+        + "On an iPhone it goes to the Files app, in Downloads."),
+      currentCounts,
+      el("div", { className: "actions" },
+        el("button", { type: "button", className: "button primary", onClick: () => {
+          // en-CA dates look like 2026-09-26 (today, in local time).
+          downloadText(`meal-planner-backup-${new Date().toLocaleDateString("en-CA")}.json`,
+            store.exportData(), "application/json");
+        } }, "Download backup"))),
+    el("section", { className: "card import-box backup-load" },
+      el("h2", {}, "Load a backup"),
+      el("p", {}, "Choose a backup file to replace everything on this device with it. "
+        + "If you might want this device's current data back, download a backup of it first."),
+      el("label", { htmlFor: "backup-file" }, "Backup file (.json)"),
+      fileInput,
+      loadArea),
+  ];
+}
+
 // ---------- Flyers ----------
 
 function weekRangeLabel(weekStart) {
@@ -1365,6 +1441,7 @@ function route() {
   else if (parts[0] === "grocery" && mealPlans.isIsoDate(parts[1])) {
     content = renderGroceryList(mealPlans.weekStartFor(mealPlans.fromIsoDate(parts[1])));
   }
+  else if (parts[0] === "data") content = renderBackup();
   else if (parts[0] === "goals" && !parts[1]) content = renderGoals(mealPlans.weekStartFor());
   else if (parts[0] === "goals" && mealPlans.isIsoDate(parts[1])) {
     content = renderGoals(mealPlans.weekStartFor(mealPlans.fromIsoDate(parts[1])));
