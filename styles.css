@@ -367,6 +367,14 @@ input.portions { text-align: center; padding-left: 0.3rem; padding-right: 0.3rem
 .day-nutrition { margin: -0.3rem 0 0; font-size: 0.82rem; }
 .day-nutrition:empty { display: none; }
 
+/* Sync */
+.sync-banner { max-width: 44rem; margin: 1rem auto 0; padding: 0 1rem; }
+.sync-banner:empty { display: none; }
+.sync-notice p { margin: 0 0 0.4rem; }
+.sync-form { display: grid; gap: 0.4rem; max-width: 22rem; }
+.sync-form label { margin: 0.25rem 0 0; }
+.sync-form .button { justify-self: start; }
+
 /* Footer + backup */
 .site-footer { max-width: 44rem; margin: -2rem auto 2rem; padding: 0 1rem; font-size: 0.9rem; }
 .site-footer a { color: var(--muted); }

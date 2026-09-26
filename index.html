@@ -21,9 +21,14 @@
     </header>
 
     <!-- app.js draws the current page in here, based on the address (#/...) -->
+    <!-- Shown only when sync needs attention (e.g. both devices changed data) -->
+    <div id="sync-banner" class="sync-banner"></div>
+
     <main id="view"></main>
 
-    <footer class="site-footer"><a href="#/data">Backup &amp; data</a></footer>
+    <footer class="site-footer">
+      <a href="#/data">Backup &amp; data</a> · <span id="sync-status" class="meta"></span>
+    </footer>
 
     <!-- Order matters: each file can use the ones loaded above it. -->
     <script src="js/store.js"></script>
@@ -39,6 +44,7 @@
     <script src="js/shopping.js"></script>
     <script src="js/nutrition.js"></script>
     <script src="js/goals.js"></script>
+    <script src="js/sync.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>

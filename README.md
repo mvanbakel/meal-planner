@@ -15,6 +15,13 @@ data erases it, and a different browser/device/address starts empty.
 **Backup & data** (footer link, `#/data`) downloads everything as a JSON file and can
 load it on another device, replacing that device's data (`store.exportData()`, `store.readBackup()`).
 
+**Sync between devices** (`js/sync.js`, also on `#/data`): sign in with an emailed 6-digit code
+(Supabase Auth). The browser copy stays the working copy; the whole data set is also stored as
+one row per user in Supabase table `meal_planner_data` (`user_id`, `data` jsonb, `version`,
+`updated_at`) with row-level security (own row only). Changes are pushed 1.5 s later; the cloud
+is checked on open / return to the app. Each save bumps `version` and only succeeds if the cloud
+is still at the version this device last saw; if both devices changed, the user chooses which to keep.
+
 ## Structure
 
 ```
@@ -33,6 +40,7 @@ js/categories.js  store sections and guessCategory() from an ingredient's name
 js/shopping.js    in-store checklist: sections, ticked-off items
 js/nutrition.js   calories & nutrients: Canadian Nutrient File lookup, toGrams(), per recipe / per day
 js/goals.js       daily nutrition goals and reviewWeek()
+js/sync.js        sign-in by email code + syncing with Supabase
 vendor/pdfjs/     pdf.js library + licence
 sample-data/      sample-flyer.csv, sample-recipe.pdf, sample-recipe-two-column.pdf
 js/app.js         UI: draws pages, handles clicks, simple #/ page routing

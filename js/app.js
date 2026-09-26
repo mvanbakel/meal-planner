@@ -1145,6 +1145,135 @@ function dataSummary(counts) {
   ].join(" · ");
 }
 
+// ---------- Sync between devices ----------
+
+function formatTime(iso) {
+  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
+}
+
+// One line for the footer: "✓ Synced Sep 26, 1:23 p.m." and so on.
+function syncStatusText() {
+  const { status, message } = sync.status();
+  if (!sync.isSignedIn() && status !== "signedOut") return "Sync is off";
+  return {
+    syncing: "Syncing…",
+    synced: `✓ Synced ${sync.lastSyncedAt() ? formatTime(sync.lastSyncedAt()) : ""}`,
+    offline: "Offline: changes will sync later",
+    conflict: "⚠ Sync needs your choice",
+    signedOut: "⚠ Signed out of sync",
+    error: `⚠ ${message}`,
+    off: "Sync is on",
+  }[status];
+}
+
+// The banner above every page, shown only when sync needs attention.
+function renderSyncBanner() {
+  const banner = document.getElementById("sync-banner");
+  const { status, message } = sync.status();
+  const summary = sync.conflictSummary();
+
+  if (status === "conflict" && summary) {
+    banner.replaceChildren(el("div", { className: "card notice sync-notice" },
+      el("p", {}, el("strong", {}, "Your devices have different data. Which do you want to keep?")),
+      el("ul", { className: "notice-points" },
+        el("li", {}, `This device: ${dataSummary(summary.device)}`),
+        el("li", {}, `Your other device (saved ${formatTime(summary.cloudUpdatedAt)}): ${dataSummary(summary.cloud)}`)),
+      el("p", { className: "meta" }, "The one you don't keep is replaced. To be safe, you can download a backup first on the ",
+        el("a", { href: "#/data" }, "Backup & data"), " page."),
+      el("div", { className: "actions" },
+        el("button", { type: "button", className: "button primary", onClick: () => sync.resolveConflict("device") },
+          "Keep this device's data"),
+        el("button", { type: "button", className: "button", onClick: () => sync.resolveConflict("cloud") },
+          "Use the other device's data"))));
+  } else if (status === "signedOut") {
+    banner.replaceChildren(el("div", { className: "card notice sync-notice" },
+      el("p", {}, `${message} `, el("a", { href: "#/data" }, "Sign in"))));
+  } else {
+    banner.replaceChildren();
+  }
+  document.getElementById("sync-status").textContent = syncStatusText();
+}
+
+// Sign in / signed-in panel on the Backup & data page.
+function renderSyncPanel() {
+  const panel = el("section", { className: "card import-box" });
+  let step = "email"; // "email" -> "code"
+  let email = "";
+
+  function draw(errorMessage = "", info = "") {
+    const error = errorMessage && el("p", { className: "error-text", role: "alert" }, errorMessage);
+    const note = info && el("p", { className: "meta" }, info);
+
+    if (sync.isSignedIn()) {
+      panel.replaceChildren(...present([
+        el("h2", {}, "Sync between devices"),
+        el("p", {}, "Signed in as ", el("strong", {}, sync.email() ?? "you"), "."),
+        el("p", { className: "meta" }, syncStatusText()),
+        el("div", { className: "actions" },
+          el("button", { type: "button", className: "button", onClick: () => sync.syncNow() }, "Sync now"),
+          el("button", { type: "button", className: "button", onClick: async () => { await sync.signOut(); draw(); } },
+            "Sign out")),
+        el("p", { className: "meta" }, "Signing out stops syncing on this device. Your data stays on it."),
+      ]));
+      return;
+    }
+
+    if (step === "email") {
+      const input = el("input", { type: "email", id: "sync-email", value: email, autocomplete: "email",
+        placeholder: "you@example.com", required: true });
+      panel.replaceChildren(...present([
+        el("h2", {}, "Sync between devices"),
+        el("p", {}, "Sign in with your email on each device to keep your recipes, plans and goals the same everywhere. "
+          + "We'll email you a 6-digit code; there's no password."),
+        el("form", { className: "sync-form", onSubmit: async (event) => {
+          event.preventDefault();
+          email = input.value;
+          draw("", "Sending…");
+          try {
+            await sync.sendCode(email);
+            step = "code";
+            draw("", `Code sent to ${email}. It can take a minute; check your junk folder too.`);
+          } catch (e) {
+            draw(e.message);
+          }
+        } },
+          el("label", { htmlFor: "sync-email" }, "Email"), input,
+          el("button", { type: "submit", className: "button primary" }, "Email me a code")),
+        note, error,
+        el("p", { className: "meta" },
+          "Data already on this device is kept. If your other device has different data, you'll be asked which to keep."),
+      ]));
+      return;
+    }
+
+    const codeInput = el("input", { id: "sync-code", inputMode: "numeric", autocomplete: "one-time-code",
+      placeholder: "123456", required: true });
+    panel.replaceChildren(...present([
+      el("h2", {}, "Sync between devices"),
+      el("form", { className: "sync-form", onSubmit: async (event) => {
+        event.preventDefault();
+        draw("", "Signing in…");
+        try {
+          await sync.verifyCode(email, codeInput.value);
+          draw();
+        } catch (e) {
+          draw(e.message.includes("expired") || e.message.includes("invalid")
+            ? "That code didn't work. Check it, or send a new one." : e.message);
+        }
+      } },
+        el("label", { htmlFor: "sync-code" }, `Code from the email sent to ${email}`), codeInput,
+        el("button", { type: "submit", className: "button primary" }, "Sign in")),
+      note, error,
+      el("button", { type: "button", className: "link", onClick: () => { step = "email"; draw(); } },
+        "Use a different email or send a new code"),
+    ]));
+  }
+
+  sync.onStatus(() => { if (panel.isConnected && sync.isSignedIn()) draw(); });
+  draw();
+  return panel;
+}
+
 function renderBackup() {
   const countNow = () => ({
     recipes: store.list("recipes").length,
@@ -1185,9 +1314,10 @@ function renderBackup() {
 
   return [
     el("h1", {}, "Backup & data"),
+    renderSyncPanel(),
     el("p", { className: "muted" },
-      "Your data is saved in this browser on this device only. A backup file lets you keep a copy, "
-      + "or move everything to another device or browser."),
+      "Your data is saved in this browser, and in the cloud too if sync is on. A backup file lets you keep "
+      + "your own copy, or move everything to another device or browser."),
     el("section", { className: "card import-box" },
       el("h2", {}, "Download a backup"),
       el("p", {}, "Saves all your recipes, meal plans, grocery edits, nutrition links and goals to one file. "
@@ -1473,3 +1603,10 @@ function route() {
 
 window.addEventListener("hashchange", route);
 route();
+
+// Sync: redraw the page when newer data arrives from another device, keep the
+// status line and banner current, and check the cloud once at start-up.
+sync.onRemoteData(route);
+sync.onStatus(renderSyncBanner);
+renderSyncBanner();
+sync.syncNow();

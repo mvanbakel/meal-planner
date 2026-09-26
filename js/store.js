@@ -4,11 +4,14 @@
 // named "collections" (like tables in a database): recipes, ingredients,
 // recipeIngredients, and later mealPlans, flyers, etc.
 //
-// To move to a real database later (Supabase, an API, ...), rewrite the
-// internals of this file and keep the same functions. Nothing else changes.
+// The browser copy is always the one the app reads and writes (so the app is
+// fast and works offline). sync.js copies it to and from the cloud: it listens
+// with onChange() and swaps in newer data with replaceAll(..., { fromSync: true }).
 const store = (() => {
   const STORAGE_KEY = "meal-planner.data";
+  const SYNC_KEY = "meal-planner.sync"; // sign-in + sync bookkeeping (see sync.js)
   const SCHEMA_VERSION = 1;
+  const listeners = [];
 
   function load() {
     try {
@@ -20,8 +23,37 @@ const store = (() => {
     return { version: SCHEMA_VERSION };
   }
 
-  function save(data) {
+  // `fromSync`: the data came from the cloud, so don't tell sync.js to send it back.
+  function save(data, { fromSync = false } = {}) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (!fromSync) listeners.forEach((listener) => listener());
+  }
+
+  // Calls `listener()` after every change made in the app.
+  function onChange(listener) {
+    listeners.push(listener);
+  }
+
+  // All data as one object (for syncing).
+  function getAll() {
+    return load();
+  }
+
+  // True if there's anything saved at all (any record in any collection).
+  function hasData() {
+    return Object.values(load()).some((value) => Array.isArray(value) && value.length > 0);
+  }
+
+  function getSyncState() {
+    try {
+      return JSON.parse(localStorage.getItem(SYNC_KEY)) ?? {};
+    } catch {
+      return {};
+    }
+  }
+
+  function setSyncState(state) {
+    localStorage.setItem(SYNC_KEY, JSON.stringify(state));
   }
 
   // Returns a copy of every record in a collection ([] if it doesn't exist yet).
@@ -101,10 +133,14 @@ const store = (() => {
     return { data, exportedAt, counts: Object.fromEntries(collections.map(([name, records]) => [name, records.length])) };
   }
 
-  // Replaces ALL data on this device with a backup read by readBackup().
-  function replaceAll(data) {
-    save(data);
+  // Replaces ALL data on this device (with a backup, or with the cloud copy).
+  function replaceAll(data, options) {
+    save(data, options);
   }
 
-  return { list, get, insert, insertMany, update, remove, removeWhere, exportData, readBackup, replaceAll };
+  return {
+    list, get, insert, insertMany, update, remove, removeWhere,
+    exportData, readBackup, replaceAll,
+    onChange, getAll, hasData, getSyncState, setSyncState,
+  };
 })();
