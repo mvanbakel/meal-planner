@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1303 >>
+stream
+BT /F1 9 Tf 50 732 Td (www.example-recipes.ca  |  Weeknight dinners) Tj ET
+BT /F2 24 Tf 50 692 Td (Chicken Burrito Bowls) Tj ET
+BT /F1 10 Tf 50 666 Td (Prep 15 min   Cook 25 min   Serves 4) Tj ET
+BT /F2 14 Tf 50 636 Td (Ingredients) Tj ET
+BT /F1 11 Tf 60 616 Td (• 600 g boneless chicken breast, cut into cubes) Tj ET
+BT /F1 11 Tf 60 600 Td (• 1 ½ cups long grain rice) Tj ET
+BT /F1 11 Tf 60 584 Td (• 1 \(540 ml\) can black beans, drained and rinsed) Tj ET
+BT /F1 11 Tf 60 568 Td (• 2 large red bell peppers, sliced) Tj ET
+BT /F1 11 Tf 60 552 Td (• 200 ml salsa) Tj ET
+BT /F1 11 Tf 60 536 Td (• 2 tbsp olive oil) Tj ET
+BT /F1 11 Tf 60 520 Td (• 1 tsp ground cumin) Tj ET
+BT /F1 11 Tf 60 504 Td (• 3 cloves garlic, minced) Tj ET
+BT /F1 11 Tf 60 488 Td (• 1-2 limes) Tj ET
+BT /F1 11 Tf 60 472 Td (• Salt and pepper to taste) Tj ET
+BT /F2 14 Tf 50 442 Td (Directions) Tj ET
+BT /F1 11 Tf 60 422 Td (1. Cook the rice according to the package directions.) Tj ET
+BT /F1 11 Tf 60 406 Td (2. Toss the chicken with oil, cumin, garlic, salt and pepper.) Tj ET
+BT /F1 11 Tf 60 390 Td (3. Cook the chicken in a hot pan for 8 to 10 minutes.) Tj ET
+BT /F1 11 Tf 60 374 Td (4. Add the peppers and beans and cook 5 minutes more.) Tj ET
+BT /F1 11 Tf 60 358 Td (5. Serve over rice with salsa and a squeeze of lime.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000001606 00000 n 
+0000001703 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1805
+%%EOF
