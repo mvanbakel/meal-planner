@@ -1324,7 +1324,17 @@ function renderSyncPanel() {
     ]));
   }
 
-  sync.onStatus(() => { if (panel.isConnected && sync.isSignedIn()) draw(); });
+  // Redraw when signed in (to show the sync status), or right after being
+  // signed out (to show the sign-in form). Otherwise leave any typing alone.
+  let wasSignedIn = sync.isSignedIn();
+  sync.onStatus(() => {
+    const signedIn = sync.isSignedIn();
+    if (panel.isConnected && (signedIn || wasSignedIn)) {
+      step = "email";
+      draw(signedIn ? "" : sync.status().message);
+    }
+    wasSignedIn = signedIn;
+  });
   // A message left by the sign-in link (see the start-up code at the bottom).
   const linkMessage = sessionStorage.getItem("meal-planner.signInMessage");
   sessionStorage.removeItem("meal-planner.signInMessage");

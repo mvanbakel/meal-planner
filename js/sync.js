@@ -74,7 +74,11 @@ const sync = (() => {
     const json = text ? JSON.parse(text) : null;
     if (!response.ok) {
       const detail = json?.msg || json?.message || json?.error_description || `error ${response.status}`;
-      throw new SyncError(response.status === 401 ? "signedOut" : "error", detail);
+      // 401, or "session_not_found": this device's sign-in has ended (e.g. it was
+      // signed out from elsewhere), even if its access token hasn't expired yet.
+      const signedOut = response.status === 401 || json?.error_code === "session_not_found"
+        || /session .*does not exist/i.test(detail);
+      throw new SyncError(signedOut ? "signedOut" : "error", detail);
     }
     return json;
   }
@@ -159,7 +163,15 @@ const sync = (() => {
 
   // Sets (or changes) the password of the signed-in account.
   async function setPassword(password) {
-    await request("/auth/v1/user", { method: "PUT", body: { password } });
+    try {
+      await request("/auth/v1/user", { method: "PUT", body: { password } });
+    } catch (error) {
+      if (error.kind === "signedOut") {
+        handleError(error); // shows "sign in again" everywhere
+        throw new SyncError("signedOut", "This device's sign-in has ended, so the password couldn't be saved. Sign in again, then set it.");
+      }
+      throw error;
+    }
   }
 
   // After clicking the email's link, the app opens with the sign-in in the address:
@@ -193,7 +205,9 @@ const sync = (() => {
 
   async function signOut() {
     try {
-      await request("/auth/v1/logout", { method: "POST" });
+      // scope=local: sign out THIS device only. (Supabase's default signs out
+      // every device, which would silently break sync on your other ones.)
+      await request("/auth/v1/logout?scope=local", { method: "POST" });
     } catch {
       // Signing out locally is what matters.
     }
