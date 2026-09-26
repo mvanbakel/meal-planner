@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Meal Planner app icon: "MP" sitting in a bowl, on the app's green. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a8d5d"/>
+      <stop offset="1" stop-color="#256b43"/>
+    </linearGradient>
+  </defs>
+  <!-- Full square: iPhone and Android round the corners themselves. -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Everything moved up 28 so the letters + bowl are centred -->
+  <g transform="translate(0 -28)">
+  <text x="256" y="300" text-anchor="middle"
+        font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-weight="800" font-size="212" letter-spacing="-6" fill="#ffffff">MP</text>
+  <!-- The bowl: a rim, and a half-round body below it -->
+  <path d="M118 330 H394 A138 88 0 0 1 118 330 Z" fill="#ffffff"/>
+  <!-- A thin green line across the bowl, like its rim edge -->
+  <path d="M142 352 H370" stroke="#2f7a4f" stroke-width="8" stroke-linecap="round" opacity="0.35"/>
+  </g>
+</svg>
