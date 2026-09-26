@@ -374,6 +374,10 @@ input.portions { text-align: center; padding-left: 0.3rem; padding-right: 0.3rem
 .sync-form { display: grid; gap: 0.4rem; max-width: 22rem; }
 .sync-form label { margin: 0.25rem 0 0; }
 .sync-form .button { justify-self: start; }
+.sync-form .actions { margin-top: 0.3rem; }
+.password-form { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); max-width: none; }
+.password-form h3 { margin: 0; font-size: 1rem; }
+.password-form p { margin: 0; }
 
 /* Footer + backup */
 .site-footer { max-width: 44rem; margin: -2rem auto 2rem; padding: 0 1rem; font-size: 0.9rem; }

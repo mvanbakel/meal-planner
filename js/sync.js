@@ -20,6 +20,9 @@
 //   2. Copy the link and paste it into the app (needed for the iPhone
 //      home-screen app, which doesn't share data with Safari).
 //   3. Type a 6-digit code, if the email has one.
+// The free email service only sends ~2 emails an hour, so once signed in you
+// can also set a password (setPassword) and sign in with it on other devices
+// (signInWithPassword), with no email needed.
 //
 // The URL and key below are public by design: they only allow what the
 // database's security rules allow (each signed-in person, their own row).
@@ -146,6 +149,17 @@ const sync = (() => {
     const auth = await request("/auth/v1/verify", { method: "POST", auth: false,
       body: { type: link.searchParams.get("type") || "email", token_hash: tokenHash } });
     return startSession(sessionFrom(auth));
+  }
+
+  async function signInWithPassword(email, password) {
+    const auth = await request("/auth/v1/token?grant_type=password", { method: "POST", auth: false,
+      body: { email: email.trim(), password } });
+    return startSession(sessionFrom(auth));
+  }
+
+  // Sets (or changes) the password of the signed-in account.
+  async function setPassword(password) {
+    await request("/auth/v1/user", { method: "PUT", body: { password } });
   }
 
   // After clicking the email's link, the app opens with the sign-in in the address:
@@ -318,7 +332,7 @@ const sync = (() => {
   window.addEventListener("online", () => syncNow());
 
   return {
-    sendCode, verifyCode, completeSignInFromLink, signOut, syncNow, resolveConflict, conflictSummary,
+    sendCode, verifyCode, completeSignInFromLink, signInWithPassword, setPassword, signOut, syncNow, resolveConflict, conflictSummary,
     isSignedIn: () => Boolean(getState().session),
     email: () => getState().session?.email ?? null,
     lastSyncedAt: () => getState().lastSyncedAt ?? null,

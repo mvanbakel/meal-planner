@@ -1194,6 +1194,35 @@ function renderSyncBanner() {
   document.getElementById("sync-status").textContent = syncStatusText();
 }
 
+// "Set a password" (shown when signed in), so other devices can sign in
+// without waiting for an email.
+function renderPasswordForm() {
+  const input = el("input", { type: "password", id: "new-password", autocomplete: "new-password", minLength: 8,
+    required: true });
+  const message = el("p", { className: "meta", "aria-live": "polite" });
+  return el("form", { className: "sync-form password-form", onSubmit: async (event) => {
+    event.preventDefault();
+    message.className = "meta";
+    message.textContent = "Saving…";
+    try {
+      await sync.setPassword(input.value);
+      input.value = "";
+      message.textContent = "✓ Password saved. On your other devices, sign in with your email and this password.";
+    } catch (e) {
+      message.className = "error-text";
+      message.textContent = e.message;
+    }
+  } },
+    el("h3", {}, "Password"),
+    el("p", { className: "meta" }, "Set a password so your other devices can sign in without waiting for an email. "
+      + "At least 8 characters. Your iPhone or password manager can save it for you."),
+    // Hidden username field: helps password managers save the password against your email.
+    el("input", { type: "email", autocomplete: "username", value: sync.email() ?? "", hidden: true, readOnly: true }),
+    el("label", { htmlFor: "new-password" }, "New password"), input,
+    el("button", { type: "submit", className: "button" }, "Save password"),
+    message);
+}
+
 // Sign in / signed-in panel on the Backup & data page.
 function renderSyncPanel() {
   const panel = el("section", { className: "card import-box" });
@@ -1214,31 +1243,53 @@ function renderSyncPanel() {
           el("button", { type: "button", className: "button", onClick: async () => { await sync.signOut(); draw(); } },
             "Sign out")),
         el("p", { className: "meta" }, "Signing out stops syncing on this device. Your data stays on it."),
+        renderPasswordForm(),
       ]));
       return;
     }
 
     if (step === "email") {
-      const input = el("input", { type: "email", id: "sync-email", value: email, autocomplete: "email",
+      const input = el("input", { type: "email", id: "sync-email", value: email, autocomplete: "username",
         placeholder: "you@example.com", required: true });
+      const passwordInput = el("input", { type: "password", id: "sync-password", autocomplete: "current-password" });
+
+      const sendLink = async () => {
+        if (!input.reportValidity()) return;
+        email = input.value;
+        draw("", "Sending…");
+        try {
+          await sync.sendCode(email);
+          step = "code";
+          draw("", `Email sent to ${email}. It can take a minute; check your junk folder too.`);
+        } catch (e) {
+          draw(/rate limit/i.test(e.message)
+            ? "Supabase's free email service only sends about 2 emails an hour, and that limit has been reached. "
+              + "Try again later, or sign in with your password if you've set one."
+            : e.message);
+        }
+      };
+
       panel.replaceChildren(...present([
         el("h2", {}, "Sync between devices"),
-        el("p", {}, "Sign in with your email on each device to keep your recipes, plans and goals the same everywhere. "
-          + "We'll email you a sign-in link; there's no password."),
+        el("p", {}, "Sign in on each device to keep your recipes, plans and goals the same everywhere."),
         el("form", { className: "sync-form", onSubmit: async (event) => {
           event.preventDefault();
           email = input.value;
-          draw("", "Sending…");
+          if (!passwordInput.value) return sendLink(); // no password typed: send a link instead
+          draw("", "Signing in…");
           try {
-            await sync.sendCode(email);
-            step = "code";
-            draw("", `Email sent to ${email}. It can take a minute; check your junk folder too.`);
+            await sync.signInWithPassword(email, passwordInput.value);
+            draw();
           } catch (e) {
-            draw(e.message);
+            draw(/invalid login/i.test(e.message)
+              ? "Wrong email or password. If you haven't set a password yet, use “Email me a sign-in link”." : e.message);
           }
         } },
           el("label", { htmlFor: "sync-email" }, "Email"), input,
-          el("button", { type: "submit", className: "button primary" }, "Email me a sign-in link")),
+          el("label", { htmlFor: "sync-password" }, "Password (if you've set one)"), passwordInput,
+          el("div", { className: "actions" },
+            el("button", { type: "submit", className: "button primary" }, "Sign in"),
+            el("button", { type: "button", className: "button", onClick: sendLink }, "Email me a sign-in link"))),
         note, error,
         el("p", { className: "meta" },
           "Data already on this device is kept. If your other device has different data, you'll be asked which to keep."),

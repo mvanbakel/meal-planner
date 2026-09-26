@@ -15,8 +15,9 @@ data erases it, and a different browser/device/address starts empty.
 **Backup & data** (footer link, `#/data`) downloads everything as a JSON file and can
 load it on another device, replacing that device's data (`store.exportData()`, `store.readBackup()`).
 
-**Sync between devices** (`js/sync.js`, also on `#/data`): sign in with an emailed 6-digit code
-(Supabase Auth). The browser copy stays the working copy; the whole data set is also stored as
+**Sync between devices** (`js/sync.js`, also on `#/data`): sign in with the emailed link (click it,
+or paste it into the app on iPhone home-screen apps) or, once set, email + password (Supabase Auth;
+the free email service allows ~2 emails/hour, so passwords avoid waiting). The browser copy stays the working copy; the whole data set is also stored as
 one row per user in Supabase table `meal_planner_data` (`user_id`, `data` jsonb, `version`,
 `updated_at`) with row-level security (own row only). Changes are pushed 1.5 s later; the cloud
 is checked on open / return to the app. Each save bumps `version` and only succeeds if the cloud
